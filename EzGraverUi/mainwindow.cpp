@@ -91,6 +91,7 @@ void MainWindow::_loadImage(QString const& fileName) {
     }
 
     _ui->image->setImage(image);
+    _printVerbose(QString{"image has %1 black pixels"}.arg(_ui->image->blackPixels()));
 }
 
 bool MainWindow::connected() const {

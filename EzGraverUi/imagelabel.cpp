@@ -1,6 +1,7 @@
 #include "imagelabel.h"
 
 #include <QPainter>
+#include <algorithm>
 
 #include "ezgraver.h"
 
@@ -40,6 +41,12 @@ void ImageLabel::updateDisplayedImage() {
     painter.drawImage(0, 0, _image.scaled(image.size()));
 
     setPixmap(QPixmap::fromImage(image.convertToFormat(QImage::Format_Mono, _flags)));
+}
+
+int ImageLabel::blackPixels() const {
+    auto image = pixmap()->toImage();
+    auto bits = image.bits();
+    return std::count_if(bits, bits+image.byteCount(), [](uchar byte) { return byte == 0x00; });
 }
 
 bool ImageLabel::imageLoaded() const {

@@ -67,6 +67,14 @@ public:
      * \param dimensions The image dimensions.
      */
     void setImageDimensions(QSize const& dimensions);
+
+    /*!
+     * Gets the count of black pixels of the image with the current
+     * conversion method.
+     *
+     * \return Returns the black pixel count.
+     */
+    int blackPixels() const;
 signals:
     /*!
      * Fired as soon as the image has been changed.
