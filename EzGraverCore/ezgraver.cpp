@@ -131,8 +131,7 @@ void EzGraver::_transmit(QByteArray const& data, int chunkSize) {
 }
 
 void EzGraver::_updateEngravingProgress() {
-    auto buffer = _serial->readAll();
-    _engraveProgress += buffer.size();
+    _engraveProgress += _serial->readAll().size();
 }
 
 EzGraver::~EzGraver() {
