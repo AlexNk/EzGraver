@@ -3,6 +3,7 @@
 
 #include "ezgravercore_global.h"
 
+#include <QObject>
 #include <QStringList>
 #include <QImage>
 #include <QSerialPort>
@@ -14,7 +15,10 @@
  * Allows accessing a NEJE engraver using the serial port it was instantiated with.
  * The connection is closed as soon as the object is destroyed.
  */
-struct EZGRAVERCORESHARED_EXPORT EzGraver {
+class EZGRAVERCORESHARED_EXPORT EzGraver : public QObject {
+    Q_OBJECT
+
+public:
     /*! The time required to erase the EEPROM in milliseconds. */
     static int const EraseTimeMs{6000};
 
@@ -28,9 +32,10 @@ struct EZGRAVERCORESHARED_EXPORT EzGraver {
      * Creates an instance and connects to the given \a portName.
      *
      * \param portName The port the connection should be established to.
+     * \param parent The parent of object of the EzGraver instance.
      * \return An instance of the EzGraver as a shared pointer.
      */
-    static std::shared_ptr<EzGraver> create(QString const& portName);
+    static std::shared_ptr<EzGraver> create(QString const& portName, QObject* parent=NULL);
 
     /*!
      * Gets a list of all available ports.
@@ -123,7 +128,7 @@ struct EZGRAVERCORESHARED_EXPORT EzGraver {
 
 private:
     std::shared_ptr<QSerialPort> _serial;
-    explicit EzGraver(std::shared_ptr<QSerialPort> serial);
+    explicit EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent);
 
     void _transmit(unsigned char const& data);
     void _transmit(QByteArray const& data);

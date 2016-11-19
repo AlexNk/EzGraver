@@ -11,7 +11,9 @@
 #include <functional>
 
 
-EzGraver::EzGraver(std::shared_ptr<QSerialPort> serial) : _serial{serial} {}
+EzGraver::EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent) : QObject(parent), _serial{serial} {
+    //connect(serial, &QSerialPort::readyRead, []{});
+}
 
 void EzGraver::start(unsigned char const& burnTime) {
     _setBurnTime(burnTime);
@@ -138,10 +140,10 @@ QStringList EzGraver::availablePorts() {
     return result;
 }
 
-std::shared_ptr<EzGraver> EzGraver::create(QString const& portName) {
+std::shared_ptr<EzGraver> EzGraver::create(QString const& portName, QObject* parent) {
     qDebug() << "instantiating EzGraver on port" << portName;
 
-    std::shared_ptr<QSerialPort> serial{new QSerialPort(portName)};
+    std::shared_ptr<QSerialPort> serial{new QSerialPort(portName, parent)};
     serial->setBaudRate(QSerialPort::Baud57600, QSerialPort::AllDirections);
     serial->setParity(QSerialPort::Parity::NoParity);
     serial->setDataBits(QSerialPort::DataBits::Data8);
@@ -153,5 +155,5 @@ std::shared_ptr<EzGraver> EzGraver::create(QString const& portName) {
         throw std::runtime_error{QString{"failed to connect to port %1 (%2)"}.arg(portName, serial->errorString()).toStdString()};
     }
 
-    return std::shared_ptr<EzGraver>{new EzGraver(serial)};
+    return std::shared_ptr<EzGraver>{new EzGraver(serial, parent)};
 }
