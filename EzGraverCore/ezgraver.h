@@ -127,7 +127,14 @@ public:
     virtual ~EzGraver();
 
 private:
+    static int const ImageBytesPerPixel{3};
+    static int const StatusBytesPerPixel{5};
+    static int const UploadChunkSize{8192};
+
     std::shared_ptr<QSerialPort> _serial;
+    int _engraveProgress;
+    int _bytesToEngrave;
+
     explicit EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent);
 
     void _transmit(unsigned char const& data);
@@ -135,6 +142,7 @@ private:
     void _transmit(QByteArray const& data, int chunkSize);
 
     void _setBurnTime(unsigned char const& burnTime);
+    void _updateEngravingProgress();
 };
 
 #endif // EZGRAVER_H
