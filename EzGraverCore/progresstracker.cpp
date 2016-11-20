@@ -51,6 +51,7 @@ void ProgressTracker::_updateEraseProgress(QTimer* timer) {
     _setEraseProgress(progress);
     if(progress >= _eraseTime) {
         timer->stop();
+        emit eraseEepromCompleted();
     }
 }
 

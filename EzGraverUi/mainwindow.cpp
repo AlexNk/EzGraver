@@ -11,9 +11,11 @@
 
 #include <stdexcept>
 
+#include "progresstracker.h"
+
 MainWindow::MainWindow(QWidget* parent)
         :  QMainWindow{parent}, _ui{new Ui::MainWindow},
-          _portTimer{}, _image{}, _ezGraver{}, _bytesWrittenProcessor{[](qint64){}}, _connected{false} {
+          _portTimer{}, _image{}, _ezGraver{}, _connected{false} {
     _ui->setupUi(this);
     setAcceptDrops(true);
 
@@ -102,25 +104,6 @@ void MainWindow::_setConnected(bool connected) {
     emit connectedChanged(connected);
 }
 
-void MainWindow::bytesWritten(qint64 bytes) {
-    _bytesWrittenProcessor(bytes);
-}
-
-void MainWindow::updateProgress(qint64 bytes) {
-    qDebug() << "Bytes written:" << bytes;
-    auto progress = _ui->progress->value() + bytes;
-    _ui->progress->setValue(progress);
-    if(progress >= _ui->progress->maximum()) {
-        _printVerbose("upload completed");
-        _bytesWrittenProcessor = [](qint64){};
-    }
-}
-
-void MainWindow::updateEngraveProgress(int progress, int max) {
-    _ui->progress->setMaximum(max);
-    _ui->progress->setValue(progress);
-}
-
 void MainWindow::on_connect_clicked() {
     try {
         _printVerbose(QString{"connecting to port %1"}.arg(_ui->ports->currentText()));
@@ -128,11 +111,23 @@ void MainWindow::on_connect_clicked() {
         _printVerbose("connection established successfully");
         _setConnected(true);
 
-        connect(_ezGraver->serialPort().get(), &QSerialPort::bytesWritten, this, &MainWindow::bytesWritten);
-        connect(_ezGraver.get(), &EzGraver::engraveProgressChanged, this, &MainWindow::updateEngraveProgress);
+        connect(_ezGraver->progressTracker().get(), &ProgressTracker::eraseEepromProgressChanged, this, &MainWindow::updateProgress);
+        connect(_ezGraver->progressTracker().get(), &ProgressTracker::uploadProgressChanged, this, &MainWindow::updateProgress);
+        connect(_ezGraver->progressTracker().get(), &ProgressTracker::engraveProgressChanged, this, &MainWindow::updateProgress);
+        connect(_ezGraver->progressTracker().get(), &ProgressTracker::eraseEepromCompleted, this, &MainWindow::eraseEepromCompleted);
     } catch(std::runtime_error const& e) {
         _printVerbose(QString{"Error: %1"}.arg(e.what()));
     }
+}
+
+void MainWindow::updateProgress(int progress, int maximum) {
+    _ui->progress->setMaximum(maximum);
+    _ui->progress->setValue(progress);
+}
+
+void MainWindow::eraseEepromCompleted() {
+    _printVerbose("uploading image to EEPROM");
+    _ezGraver->uploadImage(_ui->image->pixmap()->toImage());
 }
 
 void MainWindow::on_home_clicked() {
@@ -164,34 +159,11 @@ void MainWindow::on_down_clicked() {
 void MainWindow::on_upload_clicked() {
     _printVerbose("erasing EEPROM");
     _ezGraver->erase();
-
-    QImage image{_ui->image->pixmap()->toImage()};
-    QTimer* eraseProgressTimer{new QTimer{this}};
-    _ui->progress->setValue(0);
-    _ui->progress->setMaximum(EzGraver::EraseTimeMs);
-
-    auto eraseProgress = std::bind(&MainWindow::_eraseProgressed, this, eraseProgressTimer, image);
-    connect(eraseProgressTimer, &QTimer::timeout, eraseProgress);
-    eraseProgressTimer->start(EraseProgressDelay);
-}
-
-void MainWindow::_eraseProgressed(QTimer* eraseProgressTimer, QImage const& image) {
-    auto value = _ui->progress->value() + EraseProgressDelay;
-    _ui->progress->setValue(value);
-    if(value < EzGraver::EraseTimeMs) {
-        return;
-    }
-    eraseProgressTimer->stop();
-
-    _uploadImage(image);
 }
 
 void MainWindow::_uploadImage(QImage const& image) {
-    _bytesWrittenProcessor = std::bind(&MainWindow::updateProgress, this, std::placeholders::_1);
     _printVerbose("uploading image to EEPROM");
-    auto bytes = _ezGraver->uploadImage(image);
-    _ui->progress->setValue(0);
-    _ui->progress->setMaximum(bytes);
+    _ezGraver->uploadImage(image);
 }
 
 void MainWindow::on_preview_clicked() {

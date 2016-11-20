@@ -96,6 +96,12 @@ signals:
      */
     void eraseEepromProgressChanged(int progress, int maximum);
 
+    /*!
+     * This signal is emitted as soon as the EEPROM was completely
+     * erased.
+     */
+    void eraseEepromCompleted();
+
 private:
     int _engraveProgress;
     int _bytesToEngrave;

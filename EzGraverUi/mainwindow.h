@@ -42,9 +42,8 @@ private slots:
     void on_image_clicked();
 
     void updatePorts();
-    void bytesWritten(qint64 bytes);
-    void updateProgress(qint64 bytes);
-    void updateEngraveProgress(int progress, int max);
+    void updateProgress(int progress, int maximum);
+    void eraseEepromCompleted();
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event);
@@ -53,15 +52,12 @@ protected:
 private:
     /*! The delay between each port list update. */
     static int const PortUpdateDelay{1000};
-    /*! The delay between each progress update while erasing the EEPROM. */
-    static int const EraseProgressDelay{500};
 
     Ui::MainWindow* _ui;
     QTimer _portTimer;
     QImage _image;
 
     std::shared_ptr<EzGraver> _ezGraver;
-    std::function<void(qint64)> _bytesWrittenProcessor;
     bool _connected;
 
     void _initBindings();
@@ -70,7 +66,6 @@ private:
     void _setConnected(bool connected);
     void _printVerbose(QString const& verbose);
     void _loadImage(QString const& fileName);
-    void _eraseProgressed(QTimer* eraseProgressTimer, QImage const& image);
     void _uploadImage(QImage const& image);
 };
 
