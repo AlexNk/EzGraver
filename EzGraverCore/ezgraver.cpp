@@ -13,12 +13,12 @@
 
 EzGraver::EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent) : QObject(parent), _serial{serial},
         _engraveProgress{}, _bytesToEngrave{} {
-    connect(serial.get(), &QSerialPort::readyRead, std::bind(&EzGraver::_updateEngravingProgress, this));
+    connect(serial.get(), &QSerialPort::readyRead, this, &EzGraver::updateEngravingProgress);
 }
 
 void EzGraver::start(unsigned char const& burnTime) {
     _setBurnTime(burnTime);
-    _engraveProgress = 0;
+    _setEngraveProgress(0);
     qDebug() << "starting engrave process";
     _transmit(0xF1);
 }
@@ -90,7 +90,7 @@ int EzGraver::uploadImage(QImage const& originalImage) {
     image.invertPixels();
 
     auto bits = image.bits();
-    _bytesToEngrave = std::count_if(bits, bits+image.byteCount(), [](uchar byte) { return byte == 0xFF; }) / ImageBytesPerPixel * StatusBytesPerPixel;
+    _setPixelsToEngrave(std::count_if(bits, bits+image.byteCount(), [](uchar byte) { return byte == 0xFF; }) / ImageBytesPerPixel);
 
     QByteArray bytes{};
     QBuffer buffer{&bytes};
@@ -131,12 +131,23 @@ void EzGraver::_transmit(QByteArray const& data, int chunkSize) {
     }
 }
 
-void EzGraver::_updateEngravingProgress() {
+void EzGraver::_setEngraveProgress(int progress) {
+    if(_bytesToEngrave > 0) {
+        _engraveProgress = progress;
+        emit engraveProgressChanged(_engraveProgress, _bytesToEngrave);
+    }
+}
+
+void EzGraver::_setPixelsToEngrave(int pixels) {
+    _engraveProgress = 0;
+    _bytesToEngrave = pixels * StatusBytesPerPixel;
+    emit engraveProgressChanged(_engraveProgress, _bytesToEngrave);
+}
+
+void EzGraver::updateEngravingProgress() {
     auto buffer = _serial->readAll();
     qDebug() << "received " << buffer.size() << " bytes.";
-    if(_bytesToEngrave > 0) {
-        _engraveProgress += buffer.size();
-    }
+    _setEngraveProgress(buffer.size());
 }
 
 EzGraver::~EzGraver() {

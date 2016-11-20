@@ -126,6 +126,12 @@ public:
     EzGraver() = delete;
     virtual ~EzGraver();
 
+signals:
+    void engraveProgressChanged(int progress, int max);
+
+private slots:
+    void updateEngravingProgress();
+
 private:
     static int const ImageBytesPerPixel{3};
     static int const StatusBytesPerPixel{5};
@@ -142,7 +148,9 @@ private:
     void _transmit(QByteArray const& data, int chunkSize);
 
     void _setBurnTime(unsigned char const& burnTime);
-    void _updateEngravingProgress();
+
+    void _setEngraveProgress(int engraveProgress);
+    void _setPixelsToEngrave(int pixelsToEngrave);
 };
 
 #endif // EZGRAVER_H
