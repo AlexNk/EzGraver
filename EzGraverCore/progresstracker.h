@@ -56,7 +56,7 @@ public:
      *
      * \param statusBytes The status bytes of the progress update.
      */
-    void updateEngravingProgress(QByteArray const& statusBytes);
+    void statusBytesReceived(QByteArray const& statusBytes);
 
     virtual ~ProgressTracker();
 

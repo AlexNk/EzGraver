@@ -35,7 +35,7 @@ void ProgressTracker::_setEraseProgress(int progress) {
     }
 }
 
-void ProgressTracker::updateEngravingProgress(QByteArray const& statusBytes) {
+void ProgressTracker::statusBytesReceived(QByteArray const& statusBytes) {
     qDebug() << "received " << statusBytes.size() << " bytes.";
     _setEngraveProgress(_engraveProgress + statusBytes.size());
 }

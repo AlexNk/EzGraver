@@ -14,7 +14,7 @@
 EzGraver::EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent) : QObject(parent),
         _serial{serial}, _progressTracker{new ProgressTracker{this}} {
     connect(serial.get(), &QSerialPort::readyRead, [this]{
-        _progressTracker->updateEngravingProgress(_serial->readAll());
+        _progressTracker->statusBytesReceived(_serial->readAll());
     });
     connect(serial.get(), &QSerialPort::bytesWritten, _progressTracker.get(), &ProgressTracker::bytesWritten);
 }
