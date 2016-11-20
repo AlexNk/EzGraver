@@ -11,6 +11,8 @@
 
 #include <memory>
 
+#include "progresstracker.h"
+
 /*!
  * Allows accessing a NEJE engraver using the serial port it was instantiated with.
  * The connection is closed as soon as the object is destroyed.
@@ -22,11 +24,14 @@ public:
     /*! The time required to erase the EEPROM in milliseconds. */
     static int const EraseTimeMs{6000};
 
-    /*! The image width */
+    /*! The image width. */
     static int const ImageWidth{512};
 
-    /*! The image height */
+    /*! The image height. */
     static int const ImageHeight{512};
+
+    /*! The image upload chunk size. */
+    static int const UploadChunkSize{8192};
 
     /*!
      * Creates an instance and connects to the given \a portName.
@@ -123,30 +128,19 @@ public:
      */
     std::shared_ptr<QSerialPort> serialPort();
 
+    /*!
+     * Gets the progress tracker used by the EzGraver instance.
+     *
+     * \return The progress tracker used.
+     */
+    std::shared_ptr<ProgressTracker> progressTracker();
+
     EzGraver() = delete;
     virtual ~EzGraver();
 
-signals:
-    /*!
-     * This signal is emitted whenever the engraver made some progress or
-     * the maximum value changed.
-     *
-     * \param progress The current progress.
-     * \param max The maximum progress.
-     */
-    void engraveProgressChanged(int progress, int max);
-
-private slots:
-    void updateEngravingProgress();
-
 private:
-    static int const ImageBytesPerPixel{3};
-    static int const StatusBytesPerPixel{5};
-    static int const UploadChunkSize{8192};
-
     std::shared_ptr<QSerialPort> _serial;
-    int _engraveProgress;
-    int _bytesToEngrave;
+    std::shared_ptr<ProgressTracker> _progressTracker;
 
     explicit EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent);
 
@@ -155,9 +149,6 @@ private:
     void _transmit(QByteArray const& data, int chunkSize);
 
     void _setBurnTime(unsigned char const& burnTime);
-
-    void _setEngraveProgress(int engraveProgress);
-    void _setPixelsToEngrave(int pixelsToEngrave);
 };
 
 #endif // EZGRAVER_H
