@@ -45,7 +45,7 @@ void ProgressTracker::imageUploadStarted(QImage const& image, int bytes) {
     _bytesWrittenProcessor = std::bind(&ProgressTracker::_updateUploadProgress, this, std::placeholders::_1);
     _bytesToUpload = bytes;
     _bytesToEngrave = std::count(bits, bits+image.byteCount(), 0x00) / ImageBytesPerPixel * StatusBytesPerPixel;
-    qDebug() << "image has " << _bytesToEngrave << " bytes to engrave";
+    qDebug() << "image has" << _bytesToEngrave << "bytes to engrave";
 
     _setUploadProgress(0);
 }
