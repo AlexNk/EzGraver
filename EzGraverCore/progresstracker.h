@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QImage>
 #include <QTimer>
+#include <QByteArray>
 
 #include <memory>
 #include <functional>
@@ -31,6 +32,13 @@ public:
     ProgressTracker(QObject* parent=NULL);
 
     /*!
+     * Processes the event that the EEPROM is being erased.
+     *
+     * \param eraseTime The time required to erase the EEPROM.
+     */
+    void eraseEepromStarted(int eraseTime);
+
+    /*!
      * Processes the image upload event and initializes the image
      * upload status tracker.
      *
@@ -40,11 +48,9 @@ public:
     void imageUploadStarted(QImage const& image, int bytes);
 
     /*!
-     * Processes the event that the EEPROM is being erased.
-     *
-     * \param eraseTime The time required to erase the EEPROM.
+     * Processes the engraving start event.
      */
-    void eraseEepromStarted(int eraseTime);
+    void engravingStarted();
 
     /*!
      * Processes the event that the engraving process was resetted.
@@ -103,22 +109,24 @@ signals:
     void eraseEepromCompleted();
 
 private:
+    int _eraseProgress;
+    int _eraseTime;
+    int _uploadProgress;
+    int _bytesToUpload;
     int _engraveProgress;
     int _bytesToEngrave;
 
-    int _uploadProgress;
-    int _bytesToUpload;
     std::function<void(qint64)> _bytesWrittenProcessor;
+    std::function<void(QByteArray const&)> _statusByteProcessor;
 
-    int _eraseProgress;
-    int _eraseTime;
-
-    void _setEngraveProgress(int progress);
-    void _setUploadProgress(int progress);
     void _setEraseProgress(int progress);
 
     void _updateUploadProgress(qint64 bytes);
     void _updateEraseProgress(QTimer* timer);
+
+    void _setEngraveProgress(int progress);
+    void _setUploadProgress(int progress);
+    void _updateEngravingProgress(QByteArray const& statusBytes);
 };
 
 #endif // PROGRESSMANAGER_H

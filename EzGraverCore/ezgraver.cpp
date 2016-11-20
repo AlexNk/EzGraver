@@ -20,6 +20,7 @@ EzGraver::EzGraver(std::shared_ptr<QSerialPort> serial, QObject* parent) : QObje
 }
 
 void EzGraver::start(unsigned char const& burnTime) {
+    _progressTracker->engravingStarted();
     _setBurnTime(burnTime);
     qDebug() << "starting engrave process";
     _transmit(0xF1);

@@ -2,8 +2,9 @@
 
 #include <QDebug>
 
-ProgressTracker::ProgressTracker(QObject* parent) : QObject{parent}, _engraveProgress{}, _bytesToEngrave{},
-        _uploadProgress{}, _bytesToUpload{}, _bytesWrittenProcessor{[](qint64){}}, _eraseProgress{}, _eraseTime{} {
+ProgressTracker::ProgressTracker(QObject* parent) : QObject{parent},
+        _eraseProgress{}, _eraseTime{}, _uploadProgress{}, _bytesToUpload{}, _engraveProgress{}, _bytesToEngrave{},
+        _bytesWrittenProcessor{[](qint64){}}, _statusByteProcessor{[](QByteArray const&){}} {
 }
 
 ProgressTracker::~ProgressTracker() {}
@@ -37,20 +38,28 @@ void ProgressTracker::_setEraseProgress(int progress) {
 
 void ProgressTracker::statusBytesReceived(QByteArray const& statusBytes) {
     qDebug() << "received " << statusBytes.size() << " bytes.";
+    _statusByteProcessor(statusBytes);
+}
+
+void ProgressTracker::_updateEngravingProgress(QByteArray const& statusBytes) {
     _setEngraveProgress(_engraveProgress + statusBytes.size());
+    if(_engraveProgress >= _bytesToEngrave) {
+        _statusByteProcessor = [](QByteArray const&){};
+    }
 }
 
 void ProgressTracker::imageUploadStarted(QImage const& image, int bytes) {
-    auto bits = image.bits();
     _bytesWrittenProcessor = std::bind(&ProgressTracker::_updateUploadProgress, this, std::placeholders::_1);
     _bytesToUpload = bytes;
+
+    auto bits = image.bits();
     _bytesToEngrave = std::count(bits, bits+image.byteCount(), 0x00) / ImageBytesPerPixel * StatusBytesPerPixel;
     qDebug() << "image has" << _bytesToEngrave << "bytes to engrave";
-
-    _setUploadProgress(0);
 }
 
 void ProgressTracker::eraseEepromStarted(int eraseTime) {
+    engravingResetted();
+
     _eraseTime = eraseTime;
     QTimer* timer{new QTimer{this}};
     connect(timer, &QTimer::timeout, std::bind(&ProgressTracker::_updateEraseProgress, this, timer));
@@ -68,8 +77,13 @@ void ProgressTracker::_updateEraseProgress(QTimer* timer) {
     }
 }
 
+void ProgressTracker::engravingStarted() {
+    _statusByteProcessor = std::bind(&ProgressTracker::_updateEngravingProgress, this, std::placeholders::_1);
+}
+
 void ProgressTracker::engravingResetted() {
     _setEngraveProgress(0);
+    _statusByteProcessor = [](QByteArray const&){};
 }
 
 void ProgressTracker::_updateUploadProgress(qint64 bytes) {
