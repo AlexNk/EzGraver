@@ -13,12 +13,7 @@ bool _updateProgressGuarded(int newProgress, int& progress, int const& maximum) 
         return false;
     }
 
-    if(newProgress > maximum) {
-        progress = maximum;
-    } else {
-        progress = newProgress;
-    }
-
+    progress = (newProgress > maximum) ? maximum : newProgress;
     return true;
 }
 
