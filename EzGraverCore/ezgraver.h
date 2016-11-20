@@ -127,6 +127,13 @@ public:
     virtual ~EzGraver();
 
 signals:
+    /*!
+     * This signal is emitted whenever the engraver made some progress or
+     * the maximum value changed.
+     *
+     * \param progress The current progress.
+     * \param max The maximum progress.
+     */
     void engraveProgressChanged(int progress, int max);
 
 private slots:
