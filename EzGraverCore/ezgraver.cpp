@@ -97,7 +97,9 @@ int EzGraver::uploadImage(QImage const& originalImage) {
     QBuffer buffer{&bytes};
     image.save(&buffer, "BMP");
 
-    _progressTracker->imageUploadStarted(image, bytes.size());
+    // TODO correct the black pixel counter as it only works with the original image that
+    // is necessarily monolitic.
+    _progressTracker->imageUploadStarted(originalImage, bytes.size());
     uploadImage(bytes);
 
     _progressTracker->engravingResetted();

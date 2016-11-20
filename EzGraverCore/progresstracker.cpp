@@ -8,35 +8,51 @@ ProgressTracker::ProgressTracker(QObject* parent) : QObject{parent}, _engravePro
 
 ProgressTracker::~ProgressTracker() {}
 
+bool _updateProgressGuarded(int newProgress, int& progress, int const& maximum) {
+    if(maximum == 0) {
+        return false;
+    }
+
+    if(newProgress > maximum) {
+        progress = maximum;
+    } else {
+        progress = newProgress;
+    }
+
+    return true;
+}
+
 void ProgressTracker::_setEngraveProgress(int progress) {
-    if(_bytesToEngrave > 0) {
-        _engraveProgress = progress;
+    if(_updateProgressGuarded(progress, _engraveProgress, _bytesToEngrave)) {
         emit engraveProgressChanged(_engraveProgress, _bytesToEngrave);
     }
 }
 
 void ProgressTracker::_setUploadProgress(int progress) {
-    if(_bytesToUpload > 0) {
-        _uploadProgress = progress;
+    if(_updateProgressGuarded(progress, _uploadProgress, _bytesToUpload)) {
         emit uploadProgressChanged(_uploadProgress, _bytesToUpload);
     }
 }
 
 void ProgressTracker::_setEraseProgress(int progress) {
-    _eraseProgress = progress;
-    emit eraseEepromProgressChanged(_eraseProgress, _eraseTime);
+    if(_updateProgressGuarded(progress, _eraseProgress, _eraseTime)) {
+        emit eraseEepromProgressChanged(_eraseProgress, _eraseTime);
+    }
 }
 
 void ProgressTracker::updateEngravingProgress(QByteArray const& statusBytes) {
     qDebug() << "received " << statusBytes.size() << " bytes.";
-    _setEngraveProgress(statusBytes.size());
+    _setEngraveProgress(_engraveProgress + statusBytes.size());
 }
 
 void ProgressTracker::imageUploadStarted(QImage const& image, int bytes) {
     auto bits = image.bits();
     _bytesWrittenProcessor = std::bind(&ProgressTracker::_updateUploadProgress, this, std::placeholders::_1);
     _bytesToUpload = bytes;
-    _bytesToEngrave = std::count_if(bits, bits+image.byteCount(), [](uchar byte) { return byte == 0xFF; }) / ImageBytesPerPixel * StatusBytesPerPixel;
+    _bytesToEngrave = std::count(bits, bits+image.byteCount(), 0x00) / ImageBytesPerPixel * StatusBytesPerPixel;
+    qDebug() << "image has " << _bytesToEngrave << " bytes to engrave";
+
+    _setUploadProgress(0);
 }
 
 void ProgressTracker::eraseEepromStarted(int eraseTime) {
@@ -44,6 +60,8 @@ void ProgressTracker::eraseEepromStarted(int eraseTime) {
     QTimer* timer{new QTimer{this}};
     connect(timer, &QTimer::timeout, std::bind(&ProgressTracker::_updateEraseProgress, this, timer));
     timer->start(EraseProgressDelay);
+
+    _setEraseProgress(0);
 }
 
 void ProgressTracker::_updateEraseProgress(QTimer* timer) {
