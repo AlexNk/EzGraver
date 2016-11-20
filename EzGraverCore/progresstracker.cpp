@@ -37,7 +37,7 @@ void ProgressTracker::_setEraseProgress(int progress) {
 }
 
 void ProgressTracker::statusBytesReceived(QByteArray const& statusBytes) {
-    qDebug() << "received " << statusBytes.size() << " bytes.";
+    qDebug() << "received" << statusBytes.size() << "bytes:" << statusBytes;
     _statusByteProcessor(statusBytes);
 }
 
@@ -51,6 +51,7 @@ void ProgressTracker::_updateEngravingProgress(QByteArray const& statusBytes) {
 void ProgressTracker::imageUploadStarted(QImage const& image, int bytes) {
     _bytesWrittenProcessor = std::bind(&ProgressTracker::_updateUploadProgress, this, std::placeholders::_1);
     _bytesToUpload = bytes;
+    _setUploadProgress(0);
 
     auto bits = image.bits();
     _bytesToEngrave = std::count(bits, bits+image.byteCount(), 0x00) / ImageBytesPerPixel * StatusBytesPerPixel;
