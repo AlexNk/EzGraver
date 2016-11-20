@@ -116,6 +116,11 @@ void MainWindow::updateProgress(qint64 bytes) {
     }
 }
 
+void MainWindow::updateEngraveProgress(int progress, int max) {
+    _ui->progress->setMaximum(max);
+    _ui->progress->setValue(progress);
+}
+
 void MainWindow::on_connect_clicked() {
     try {
         _printVerbose(QString{"connecting to port %1"}.arg(_ui->ports->currentText()));
@@ -124,6 +129,7 @@ void MainWindow::on_connect_clicked() {
         _setConnected(true);
 
         connect(_ezGraver->serialPort().get(), &QSerialPort::bytesWritten, this, &MainWindow::bytesWritten);
+        connect(_ezGraver.get(), &EzGraver::engraveProgressChanged, this, &MainWindow::updateEngraveProgress);
     } catch(std::runtime_error const& e) {
         _printVerbose(QString{"Error: %1"}.arg(e.what()));
     }

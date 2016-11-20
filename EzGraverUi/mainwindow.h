@@ -44,6 +44,7 @@ private slots:
     void updatePorts();
     void bytesWritten(qint64 bytes);
     void updateProgress(qint64 bytes);
+    void updateEngraveProgress(int progress, int max);
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event);
