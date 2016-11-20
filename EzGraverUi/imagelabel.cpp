@@ -43,13 +43,6 @@ void ImageLabel::updateDisplayedImage() {
     setPixmap(QPixmap::fromImage(image.convertToFormat(QImage::Format_Mono, _flags)));
 }
 
-int ImageLabel::blackPixels() const {
-    auto image = pixmap()->toImage();
-    auto bits = image.bits();
-    // Division by three because 3 bytes represent the color a single pixel.
-    return std::count_if(bits, bits+image.byteCount(), [](uchar byte) { return byte == 0x00; }) / 3;
-}
-
 bool ImageLabel::imageLoaded() const {
     return !_image.isNull();
 }
