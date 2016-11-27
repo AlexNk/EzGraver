@@ -12,6 +12,8 @@
 class RateTracker : public QObject {
     Q_OBJECT
 
+    Q_PROPERTY(double rate READ rate NOTIFY rateChanged)
+
 public:
     /*!
      * Creates a new instance of the rate tracker with the given parent object.
@@ -34,9 +36,20 @@ public:
      */
     double rate() const;
 
+signals:
+    /*!
+     * Emitted as soon as the transfer rate changed.
+     *
+     * \param rate The new transfer rate.
+     */
+    void rateChanged(double rate);
+
 private:
     QElapsedTimer _timer;
     std::list<int> _history;
+    double _rate;
+
+    void _updateRate();
 };
 
 #endif // RATETRACKER_H
