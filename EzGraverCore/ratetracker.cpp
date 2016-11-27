@@ -17,7 +17,7 @@ void RateTracker::bytesReceived(int count) {
         _timer.start();
     }
 
-    if(_timer.elapsed() < TimeBetweenHistoryMs) {
+    if(!_timer.hasExpired(TimeBetweenHistoryMs)) {
         _history.back() += count;
         return;
     }
