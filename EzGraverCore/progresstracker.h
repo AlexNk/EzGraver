@@ -11,6 +11,9 @@
 #include <memory>
 #include <functional>
 
+/*!
+ * Tracks the progress of the engravers active operation.
+ */
 class EZGRAVERCORESHARED_EXPORT ProgressTracker : public QObject {
     Q_OBJECT
 
