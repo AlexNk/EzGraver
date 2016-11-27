@@ -2,6 +2,7 @@
 #define RATETRACKER_H
 
 #include <QObject>
+#include <QElapsedTimer>
 
 #include <list>
 
@@ -34,6 +35,7 @@ public:
     double rate() const;
 
 private:
+    QElapsedTimer _timer;
     std::list<int> _history;
 };
 

@@ -6,17 +6,25 @@ namespace {
 static int const RequiredHistory{3};
 static int const Weights[3] = {1, 2, 1};
 static int const TotalWeight{4};
+static int const TimeBetweenHistoryMs{1000};
 }
 
-RateTracker::RateTracker(QObject* parent) : QObject{parent}, _history{} {
-
+RateTracker::RateTracker(QObject* parent) : QObject{parent}, _timer{}, _history{0, RequiredHistory} {
 }
 
 void RateTracker::bytesReceived(int count) {
-    _history.push_back(count);
-    if(_history.size() > RequiredHistory) {
-        _history.pop_front();
+    if(!_timer.isValid()) {
+        _timer.start();
     }
+
+    if(_timer.elapsed() < TimeBetweenHistoryMs) {
+        _history.back() += count;
+        return;
+    }
+
+    _timer.restart();
+    _history.push_back(count);
+    _history.pop_front();
 }
 
 double RateTracker::rate() const {
