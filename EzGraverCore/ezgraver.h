@@ -86,6 +86,11 @@ struct EZGRAVERCORESHARED_EXPORT EzGraver {
     void erase();
 
     /*!
+     * Requests ready status (0x65). 
+     */
+    void requestReady();
+
+    /*!
      * Uploads the given \a image to the EEPROM. It is mandatory to use \a erase()
      * it prior uploading an image. The image will automatically be scaled, inverted,
      * mirrored and converted to a monochrome bitmap.

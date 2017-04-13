@@ -54,22 +54,22 @@ void EzGraver::preview() {
 
 void EzGraver::up() {
     qDebug() << "moving up";
-    _transmit(0xF5);
+    _transmit("\xf5\x01");
 }
 
 void EzGraver::down() {
     qDebug() << "moving down";
-    _transmit(0xF6);
+    _transmit("\xf5\x02");
 }
 
 void EzGraver::left() {
     qDebug() << "moving left";
-    _transmit(0xF7);
+    _transmit("\xf5\x03");
 }
 
 void EzGraver::right() {
     qDebug() << "moving right";
-    _transmit(0xF8);
+    _transmit("\xf5\x04");
 }
 
 void EzGraver::erase() {
@@ -122,6 +122,12 @@ void EzGraver::_transmit(QByteArray const& data, int chunkSize) {
         _serial->write(data.mid(i, chunkSize));
         _serial->flush();
     }
+}
+
+void EzGraver::requestReady()
+{
+    qDebug() << "requesting ready status";
+    _transmit(0xF6);
 }
 
 EzGraver::~EzGraver() {
