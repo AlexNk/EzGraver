@@ -95,6 +95,33 @@ void ImageLabel::updateDisplayedImage() {
             ? QPixmap::fromImage(_createGrayscaleImage(image))
             : QPixmap::fromImage(image.convertToFormat(QImage::Format_Mono, _flags));
     setPixmap(rendered);
+
+    _picX0 = _picY0 = 0;
+    _picX1 = image.width();
+    _picY1 = image.height();
+    bool found = false;
+    for (int y = 0; y < image.height(); ++y)
+        for (int x = 0; x < image.width(); ++x)
+        {
+            if (image.pixel(x, y) == qRgba(0, 0, 0, 0xFF))
+            {
+                if (!found)
+                {
+                    _picX0 = _picX1 = x;
+                    _picY0 = _picY1 = y;
+                    found = true;
+                } else
+                {
+                    if (x < _picX0) _picX0 = x;
+                    else
+                    if (x > _picX1) _picX1 = x;
+
+                    if (y < _picY0) _picY0 = y;
+                    else
+                    if (y > _picY1) _picY1 = y;
+                }
+            }
+        }
 }
 
 QImage ImageLabel::_createGrayscaleImage(QImage const& original) const {
@@ -135,4 +162,20 @@ void ImageLabel::setImageDimensions(QSize const& dimensions) {
     auto span = this->lineWidth()*2;
     setMinimumWidth(dimensions.width() + span);
     setMinimumHeight(dimensions.height() + span);
+}
+
+int ImageLabel::picX() const {
+    return _picX0;
+}
+
+int ImageLabel::picY() const {
+    return _picY0;
+}
+
+int ImageLabel::picW() const {
+    return _picX1 - _picX0 + 1;
+}
+
+int ImageLabel::picH() const {
+    return _picY1 - _picY0 + 1;
 }

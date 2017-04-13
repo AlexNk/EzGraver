@@ -12,6 +12,10 @@ class ImageLabel : public ClickLabel {
     Q_PROPERTY(int layerCount READ layerCount WRITE setLayerCount NOTIFY layerCountChanged)
     Q_PROPERTY(bool keepAspectRatio READ keepAspectRatio WRITE setKeepAspectRatio NOTIFY keepAspectRatioChanged)
     Q_PROPERTY(bool imageLoaded READ imageLoaded NOTIFY imageLoadedChanged)
+    Q_PROPERTY(int picX READ picX)
+    Q_PROPERTY(int picY READ picY)
+    Q_PROPERTY(int picW READ picW)
+    Q_PROPERTY(int picH READ picH)
 
 public:
     /*!
@@ -127,6 +131,35 @@ public:
      * \param dimensions The image dimensions.
      */
     void setImageDimensions(QSize const& dimensions);
+
+    /*!
+     * Gets X position of top left corner of the picture in the image.
+     *
+     * \return X position of top left corner of the picture in the image.
+     */
+    int picX() const;
+
+    /*!
+     * Gets Y position of top left corner of the picture in the image.
+     *
+     * \return Y position of top left corner of the picture in the image.
+     */
+    int picY() const;
+
+    /*!
+     * Gets width position of top left corner of the picture in the image.
+     *
+     * \return Width position of top left corner of the picture in the image.
+     */
+    int picW() const;
+
+    /*!
+     * Gets height of the picture in the image.
+     *
+     * \return Height of the picture in the image.
+     */
+    int picH() const;
+
 signals:
     /*!
      * Fired as soon as the image has been changed.
@@ -183,6 +216,10 @@ private:
     int _layer;
     int _layerCount;
     bool _keepAspectRatio;
+    int _picX0 = 0;
+    int _picY0 = 0;
+    int _picX1 = 0;
+    int _picY1 = 0;
 
     void updateDisplayedImage();
     QImage _createGrayscaleImage(QImage const& original) const;

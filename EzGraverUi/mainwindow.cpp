@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget* parent)
     _initBindings();
     _initConversionFlags();
     _setConnected(false);
+    _setUploaded(false);
 
     _ui->image->setImageDimensions(QSize{EzGraver::ImageWidth, EzGraver::ImageHeight});
 }
@@ -34,20 +35,9 @@ MainWindow::~MainWindow() {
 void MainWindow::_initBindings() {
     connect(_ui->burnTime, &QSlider::valueChanged, [this](int const& v) { _ui->burnTimeLabel->setText(QString::number(v)); });
 
-    connect(this, &MainWindow::connectedChanged, _ui->ports, &QComboBox::setDisabled);
-    connect(this, &MainWindow::connectedChanged, _ui->connect, &QPushButton::setDisabled);
-    connect(this, &MainWindow::connectedChanged, _ui->disconnect, &QPushButton::setEnabled);
+    connect(this, &MainWindow::connectedChanged, this, &MainWindow::enableControls);
+    connect(this, &MainWindow::uploadedChanged,  this, &MainWindow::enableControls);
 
-    connect(this, &MainWindow::connectedChanged, _ui->home, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->up, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->left, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->center, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->right, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->down, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->preview, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->start, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->pause, &QPushButton::setEnabled);
-    connect(this, &MainWindow::connectedChanged, _ui->reset, &QPushButton::setEnabled);
     connect(_ui->conversionFlags, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [this](int index) {
         _ui->image->setConversionFlags(static_cast<Qt::ImageConversionFlags>(_ui->conversionFlags->itemData(index).toInt()));
     });
@@ -67,6 +57,24 @@ void MainWindow::_initBindings() {
     connect(_ui->selectedLayer, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), uploadEnabled);
     connect(_ui->layered, &QCheckBox::toggled, uploadEnabled);
     connect(_ui->keepAspectRatio, &QCheckBox::toggled, _ui->image, &ImageLabel::setKeepAspectRatio);
+}
+
+void MainWindow::enableControls()
+{
+    _ui->ports->setEnabled(!_connected);
+    _ui->connect->setEnabled(!_connected);
+    _ui->disconnect->setEnabled(_connected);
+
+    _ui->home->setEnabled(_connected);
+    _ui->up->setEnabled(_connected);
+    _ui->left->setEnabled(_connected);
+    _ui->center->setEnabled(_connected);
+    _ui->right->setEnabled(_connected);
+    _ui->down->setEnabled(_connected);
+    _ui->preview->setEnabled(_connected);
+    _ui->start->setEnabled(_connected && _uploaded);
+    _ui->pause->setEnabled(_connected);
+    _ui->reset->setEnabled(_connected);
 }
 
 void MainWindow::_initConversionFlags() {
@@ -109,9 +117,18 @@ bool MainWindow::connected() const {
     return _connected;
 }
 
+bool MainWindow::uploaded() const {
+    return _uploaded;
+}
+
 void MainWindow::_setConnected(bool connected) {
     _connected = connected;
     emit connectedChanged(connected);
+}
+
+void MainWindow::_setUploaded(bool uploaded) {
+    _uploaded = uploaded;
+    emit uploadedChanged(uploaded);
 }
 
 void MainWindow::bytesWritten(qint64 bytes) {
@@ -134,8 +151,10 @@ void MainWindow::on_connect_clicked() {
         _ezGraver = EzGraver::create(_ui->ports->currentText());
         _printVerbose("connection established successfully");
         _setConnected(true);
+        _inData.clear();
 
         connect(_ezGraver->serialPort().get(), &QSerialPort::bytesWritten, this, &MainWindow::bytesWritten);
+        connect(_ezGraver->serialPort().get(), &QSerialPort::readyRead, this, &MainWindow::readyRead);
     } catch(std::runtime_error const& e) {
         _printVerbose(QString{"Error: %1"}.arg(e.what()));
     }
@@ -196,8 +215,9 @@ void MainWindow::_uploadImage(QImage const& image) {
     _bytesWrittenProcessor = std::bind(&MainWindow::updateProgress, this, std::placeholders::_1);
     _printVerbose("uploading image to EEPROM");
     auto bytes = _ezGraver->uploadImage(image);
-    _ui->progress->setValue(0);
     _ui->progress->setMaximum(bytes);
+    _ui->progress->setValue(bytes);
+    _ezGraver->requestReady();
 }
 
 void MainWindow::on_preview_clicked() {
@@ -207,6 +227,9 @@ void MainWindow::on_preview_clicked() {
 
 void MainWindow::on_start_clicked() {
     _printVerbose(QString{"starting engrave process with burn time %1"}.arg(_ui->burnTime->value()));
+    _ui->progress->setValue(0);
+    _ui->progress->setMaximum(_ui->image->picH() * _ui->image->picW());
+
     _ezGraver->start(_ui->burnTime->value());
 }
 
@@ -231,6 +254,7 @@ void MainWindow::on_image_clicked() {
     auto fileName = QFileDialog::getOpenFileName(this, "Open Image", "", "Images (*.png *.jpeg *.jpg *.bmp)");
     if(!fileName.isNull()) {
         _loadImage(fileName);
+        emit uploadedChanged(false);
     }
 }
 
@@ -243,5 +267,42 @@ void MainWindow::dragEnterEvent(QDragEnterEvent* event) {
 void MainWindow::dropEvent(QDropEvent* event) {
     QString fileName{event->mimeData()->urls()[0].toLocalFile()};
     _loadImage(fileName);
+}
+
+void MainWindow::readyRead()
+{
+    _inData += _ezGraver->serialPort()->read(1024);
+    for (int i = 0; _inData.size() > 0; ++i)
+    {
+        if ((_inData.size() >= 5) && (_inData[0] == '\xff'))
+        {
+            // Report about burned pixel
+            int pic_x = (_inData[1]*100 + _inData[2]) - _ui->image->picX();
+            int pic_y = (_inData[3]*100 + _inData[4]) - _ui->image->picY();
+            _ui->progress->setValue(pic_y * _ui->image->picW() + pic_x);
+            _inData.remove(0, 5);
+        } else
+        if ((_inData.size() > 0) && (_inData[0] == '\x66'))
+        {
+            // Report about complete burning
+            _ui->progress->setValue(0);
+            _inData.remove(0, 1);
+        } else
+        if ((_inData.size() > 0) && (_inData[0] == '\x65'))
+        {
+            // Ready status
+            _ui->progress->setValue(0);
+            _setUploaded(true);
+            _inData.remove(0, 1);
+        } else
+        {
+            if (i == 0)
+            {
+                qDebug() << "received unknown data" << _inData.size() << " bytes: " << _inData.toHex();
+                _inData.clear();
+            }
+            break;
+        }
+    }
 }
 
