@@ -5,6 +5,7 @@ QT += serialport
 
 TARGET = EzGraverCore
 TEMPLATE = lib
+CONFIG += staticlib
 
 DEFINES += EZGRAVERCORE_LIBRARY
 
