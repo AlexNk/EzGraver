@@ -50,7 +50,9 @@ void MainWindow::_initBindings() {
     connect(_ui->selectedLayer, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), _ui->image, &ImageLabel::setLayer);
 
     auto uploadEnabled = [this] {
+        _uploaded = false;
         _ui->upload->setEnabled(_ui->image->imageLoaded() && _connected && (!_ui->layered->isChecked() || _ui->selectedLayer->value() > 0));
+        enableControls();
     };
     connect(this, &MainWindow::connectedChanged, uploadEnabled);
     connect(_ui->image, &ImageLabel::imageLoadedChanged, uploadEnabled);
