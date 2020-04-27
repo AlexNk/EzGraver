@@ -1,13 +1,22 @@
 #include "imagelabel.h"
 
 #include <QPainter>
+#include <QDebug>
 
 #include <algorithm>
 
 #include "ezgraver.h"
 
-ImageLabel::ImageLabel(QWidget* parent) : ClickLabel{parent}, _image{}, _flags{Qt::DiffuseDither},
-    _grayscale{false}, _layer{0}, _layerCount{3}, _keepAspectRatio{false} {}
+ImageLabel::ImageLabel(QWidget* parent)
+    : ClickLabel{parent}
+    , _image{}
+    , _layerBurn{QSize{EzGraver::ImageWidth, EzGraver::ImageHeight}, QImage::Format_ARGB32}
+    , _flags{Qt::DiffuseDither}
+    , _grayscale{false}
+    , _layer{0}
+    , _layerCount{3}
+    , _keepAspectRatio{false}
+{   }
 
 ImageLabel::~ImageLabel() {}
 
@@ -17,6 +26,7 @@ QImage ImageLabel::image() const {
 
 void ImageLabel::setImage(QImage const& image) {
     _image = image;
+    _burnCount = _burnedCount = 0;
     updateDisplayedImage();
     emit imageLoadedChanged(true);
     emit imageChanged(image);
@@ -91,37 +101,8 @@ void ImageLabel::updateDisplayedImage() {
             : QPoint(0, 0);
     painter.drawImage(position, scaled);
 
-    auto rendered = _grayscale
-            ? QPixmap::fromImage(_createGrayscaleImage(image))
-            : QPixmap::fromImage(image.convertToFormat(QImage::Format_Mono, _flags));
-    setPixmap(rendered);
-
-    _picX0 = _picY0 = 0;
-    _picX1 = image.width();
-    _picY1 = image.height();
-    bool found = false;
-    for (int y = 0; y < image.height(); ++y)
-        for (int x = 0; x < image.width(); ++x)
-        {
-            if (image.pixel(x, y) == qRgba(0, 0, 0, 0xFF))
-            {
-                if (!found)
-                {
-                    _picX0 = _picX1 = x;
-                    _picY0 = _picY1 = y;
-                    found = true;
-                } else
-                {
-                    if (x < _picX0) _picX0 = x;
-                    else
-                    if (x > _picX1) _picX1 = x;
-
-                    if (y < _picY0) _picY0 = y;
-                    else
-                    if (y > _picY1) _picY1 = y;
-                }
-            }
-        }
+    _displayImg = _grayscale ? _createGrayscaleImage(image) : image.convertToFormat(QImage::Format_Mono, _flags);
+    updateInfoLayers();
 }
 
 QImage ImageLabel::_createGrayscaleImage(QImage const& original) const {
@@ -178,4 +159,49 @@ int ImageLabel::picW() const {
 
 int ImageLabel::picH() const {
     return _picY1 - _picY0 + 1;
+}
+
+int ImageLabel::markBurnedPixel(int x, int y) {
+    _layerBurn.setPixel(x, y, qRgba(0xFF, 0x00, 0x00, 0xFF));
+    updateDisplayedImage();
+    return ++_burnedCount;
+}
+
+void ImageLabel::resetBurnStatus() {
+    _layerBurn.fill(qRgba(0, 0, 0, 0));
+    _burnedCount = 0;
+    updateDisplayedImage();
+}
+
+void ImageLabel::updateDimensions(QImage const & image) {
+    // _picY0 = _picY1 = _picX0 = _picX1 = -1;
+    auto const w = image.width();
+    auto const h = image.height();
+    _picX0 = w;
+    _picY0 = h;
+    _picX1 = 0;
+    _picY1 = 0;
+    _burnCount = 0;
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x)
+        {
+            if (image.pixel(x, y) == qRgba(0, 0, 0, 0xFF))
+            {
+                ++_burnCount;
+                _picX0 = std::min(_picX0, x);
+                _picY0 = std::min(_picY0, y);
+                _picX1 = std::max(_picX1, x);
+                _picY1 = std::max(_picY1, y);
+            }
+        }
+}
+
+void ImageLabel::updateInfoLayers() {
+    auto img = _displayImg.convertToFormat(QImage::Format_ARGB32, 0);
+    QPainter painter{&img};
+    painter.drawImage(QPoint(0, 0), _layerBurn);
+
+    auto rendered = QPixmap::fromImage(img);
+    setPixmap(rendered);
+    updateDimensions(img);
 }

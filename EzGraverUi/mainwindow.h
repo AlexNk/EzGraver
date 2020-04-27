@@ -62,7 +62,6 @@ private:
 
     Ui::MainWindow* _ui;
     QTimer _portTimer;
-    QImage _image;
     QByteArray _inData;
 
     std::shared_ptr<EzGraver> _ezGraver;

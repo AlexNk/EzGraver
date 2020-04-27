@@ -13,7 +13,7 @@
 
 MainWindow::MainWindow(QWidget* parent)
         :  QMainWindow{parent}, _ui{new Ui::MainWindow},
-          _portTimer{}, _image{}, _ezGraver{}, _bytesWrittenProcessor{[](qint64){}}, _connected{false} {
+          _portTimer{}, _ezGraver{}, _bytesWrittenProcessor{[](qint64){}}, _connected{false} {
     _ui->setupUi(this);
     setAcceptDrops(true);
 
@@ -196,6 +196,7 @@ void MainWindow::on_upload_clicked() {
     QTimer* eraseProgressTimer{new QTimer{this}};
     _ui->progress->setValue(0);
     _ui->progress->setMaximum(EzGraver::EraseTimeMs);
+    _ui->image->resetBurnStatus();
 
     auto eraseProgress = std::bind(&MainWindow::_eraseProgressed, this, eraseProgressTimer, image);
     connect(eraseProgressTimer, &QTimer::timeout, eraseProgress);
@@ -215,10 +216,19 @@ void MainWindow::_eraseProgressed(QTimer* eraseProgressTimer, QImage const& imag
 
 void MainWindow::_uploadImage(QImage const& image) {
     _bytesWrittenProcessor = std::bind(&MainWindow::updateProgress, this, std::placeholders::_1);
+    if (_ui->image->picW() <= 0 )
+    {
+        _printVerbose("cannot upload empty image");
+        return;
+    }
     _printVerbose("uploading image to EEPROM");
     auto bytes = _ezGraver->uploadImage(image);
-    _ui->progress->setMaximum(bytes);
+    int maxProgress = _ui->image->burnCount();
+    if (maxProgress == 0)
+        maxProgress = EzGraver::ImageWidth * EzGraver::ImageHeight;
+    _ui->progress->setMaximum(maxProgress);
     _ui->progress->setValue(bytes);
+    _ui->image->resetBurnStatus();
     _ezGraver->requestReady();
 }
 
@@ -230,8 +240,6 @@ void MainWindow::on_preview_clicked() {
 void MainWindow::on_start_clicked() {
     _printVerbose(QString{"starting engrave process with burn time %1"}.arg(_ui->burnTime->value()));
     _ui->progress->setValue(0);
-    _ui->progress->setMaximum(_ui->image->picH() * _ui->image->picW());
-
     _ezGraver->start(_ui->burnTime->value());
 }
 
@@ -242,6 +250,7 @@ void MainWindow::on_pause_clicked() {
 
 void MainWindow::on_reset_clicked() {
     _printVerbose("resetting engraver");
+    _ui->image->resetBurnStatus();
     _ezGraver->reset();
 }
 
@@ -274,25 +283,30 @@ void MainWindow::dropEvent(QDropEvent* event) {
 void MainWindow::readyRead()
 {
     _inData += _ezGraver->serialPort()->read(1024);
+    bool marked = false;
     for (int i = 0; _inData.size() > 0; ++i)
     {
         if ((_inData.size() >= 5) && (_inData[0] == '\xff'))
         {
             // Report about burned pixel
-            int pic_x = (_inData[1]*100 + _inData[2]) - _ui->image->picX();
-            int pic_y = (_inData[3]*100 + _inData[4]) - _ui->image->picY();
-            _ui->progress->setValue(pic_y * _ui->image->picW() + pic_x);
+            int pic_x = (_inData[1]*100 + _inData[2]);
+            int pic_y = (_inData[3]*100 + _inData[4]);
+            _ui->progress->setValue( _ui->image->markBurnedPixel( pic_x, pic_y ) );
+            marked = true;
             _inData.remove(0, 5);
         } else
         if ((_inData.size() > 0) && (_inData[0] == '\x66'))
         {
             // Report about complete burning
+            _printVerbose("status - complete");
             _ui->progress->setValue(0);
+            _ui->image->resetBurnStatus();
             _inData.remove(0, 1);
         } else
         if ((_inData.size() > 0) && (_inData[0] == '\x65'))
         {
             // Ready status
+            _printVerbose("status - ready");
             _ui->progress->setValue(0);
             _setUploaded(true);
             _inData.remove(0, 1);
@@ -306,5 +320,8 @@ void MainWindow::readyRead()
             break;
         }
     }
+
+    if (marked)
+        _ui->image->updateInfoLayers();
 }
 

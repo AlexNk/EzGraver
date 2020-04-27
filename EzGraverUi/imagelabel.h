@@ -160,6 +160,31 @@ public:
      */
     int picH() const;
 
+    /*!
+     * Gets number of pixels to be burned.
+     *
+     * \return Number of pixels to be burned.
+     */
+    int burnCount() const
+    {   return _burnCount;  }
+
+    /*!
+     * Marks a pixel as burned.
+     *
+     * \return The number of already burned pixels.
+     */
+    int markBurnedPixel(int x, int y);
+
+    /*!
+     * Resets burned pixels.
+     */
+    void resetBurnStatus();
+
+    /*!
+     * Redraws image with upper layers.
+     */
+    void updateInfoLayers();
+
 signals:
     /*!
      * Fired as soon as the image has been changed.
@@ -209,8 +234,12 @@ signals:
      * \param imageLoaded \c true if an image is loaded.
      */
     void imageLoadedChanged(bool imageLoaded);
+
 private:
     QImage _image;
+    QImage _displayImg;
+    QImage _layerBurn;
+
     Qt::ImageConversionFlags _flags;
     bool _grayscale;
     int _layer;
@@ -220,8 +249,11 @@ private:
     int _picY0 = 0;
     int _picX1 = 0;
     int _picY1 = 0;
+    int _burnCount = 0;
+    int _burnedCount = 0;
 
     void updateDisplayedImage();
+    void updateDimensions(QImage const & image);
     QImage _createGrayscaleImage(QImage const& original) const;
     QVector<QRgb> _createColorTable() const;
 };
